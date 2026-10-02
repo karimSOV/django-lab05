@@ -3,6 +3,11 @@ from django.contrib import admin
 from .models import Genre, Movie, Person, Rating
 
 
+class RatingInline(admin.TabularInline):
+    model = Rating
+    extra = 1
+
+
 @admin.register(Movie)
 class MovieAdmin(admin.ModelAdmin):
     list_display = ["title", "year", "director", "display_genres"]
@@ -10,6 +15,7 @@ class MovieAdmin(admin.ModelAdmin):
     search_fields = ["title"]
     filter_horizontal = ["genres"]
     list_select_related = ["director"]
+    inlines = [RatingInline]
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("genres")
