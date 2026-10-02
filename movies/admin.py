@@ -6,6 +6,7 @@ from .models import Genre, Movie, Person, Rating
 class RatingInline(admin.TabularInline):
     model = Rating
     extra = 1
+    readonly_fields = ["created_at"]
 
 
 @admin.register(Movie)
@@ -16,6 +17,7 @@ class MovieAdmin(admin.ModelAdmin):
     filter_horizontal = ["genres"]
     list_select_related = ["director"]
     inlines = [RatingInline]
+    readonly_fields = ["created_at", "updated_at"]
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("genres")
@@ -42,6 +44,7 @@ class RatingAdmin(admin.ModelAdmin):
     list_display = ["movie", "score", "created_at"]
     list_filter = ["score"]
     list_select_related = ["movie"]
+    readonly_fields = ["created_at"]
 
 
 admin.site.site_header = "Movie Administration"
