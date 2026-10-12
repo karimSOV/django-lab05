@@ -60,8 +60,9 @@ Con las variables anteriores configuradas:
 .\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-Abre `http://127.0.0.1:8000/admin/`. Detén el servidor con `Ctrl+C` antes de
-iniciar otro en el mismo puerto. La raíz `/` no tiene una vista pública.
+Abre `http://127.0.0.1:8000/admin/` para el panel. Detén el servidor con
+`Ctrl+C` antes de iniciar otro en el mismo puerto. La raíz `/` redirige al
+catálogo público en `/movies/`.
 
 No hay fixtures, seeds ni carga automática del catálogo. Añade géneros,
 personas, películas y valoraciones manualmente desde el administrador. El
@@ -74,7 +75,8 @@ Los archivos se sirven por Django únicamente con `DEBUG=1`.
 
 ## Crear editores
 
-El comando está escrito, pero no se ejecutó sobre la base del laboratorio.
+El comando se ejecutó sobre la base local del laboratorio para crear el grupo
+`editores` y un usuario de prueba. En una base nueva hay que ejecutarlo otra vez.
 Ejecuta `migrate` antes de utilizarlo. Sustituye los argumentos por los tuyos:
 
 ```powershell
@@ -134,6 +136,14 @@ Utiliza una cuenta dedicada para el editor. Si el usuario ya existía, el comand
 conserva sus otros grupos y permisos directos: Django acumula esos permisos y
 podrían ampliar el acceso. El superusuario debe revisar esas asignaciones.
 
+## Catálogo y búsqueda
+
+La ruta `/movies/` muestra el catálogo público: un banner con las películas
+mejor valoradas y filas por valoración, año y género, con el póster de cada
+película cuando existe. La barra de búsqueda filtra por título, director o
+género mediante el parámetro `q`, por ejemplo `/movies/?q=drama`. Cada tarjeta
+enlaza con las recomendaciones de esa película.
+
 ## Recomendaciones
 
 Después de cargar datos manualmente, abre la ruta usando el identificador de
@@ -158,15 +168,17 @@ Configura `SECRET_KEY` en la sesión y ejecuta:
 .\venv\Scripts\python.exe manage.py test movies.tests --verbosity 2
 ```
 
-Los 26 tests usan `django.test` y una base temporal en memoria, que Django
-destruye al finalizar. Solo allí se generan datos y se llama a `setup_editors`;
-no se modifica `db.sqlite3` ni se deja un editor en el laboratorio.
+Los 32 tests usan `django.test` y una base temporal en memoria, que Django
+destruye al finalizar. Los tests generan sus propios datos y llaman a
+`setup_editors` solo en esa base temporal; no modifican `db.sqlite3`.
 
 Se comprueban los permisos exactos del grupo, la idempotencia y validación del
 comando, la protección del superusuario, el acceso al listado, el bloqueo de
 eliminaciones y de Usuarios/Grupos, el inline y los campos de solo lectura.
 También se prueban los promedios, el orden, la exclusión de la película
-consultada, el límite de cinco, la ausencia de duplicados y el 404.
+consultada, el límite de cinco, la ausencia de duplicados y el 404. Del
+catálogo se prueban la redirección desde la raíz, el promedio por película y
+la búsqueda por título, director y género.
 
 ## Historial
 
@@ -185,10 +197,31 @@ git show 5754586:movies/admin.py
 
 ## Capturas
 
+Las imágenes están en la carpeta `capturas/`.
+
 ### panel antes de personalizar
+
+![Panel con registro simple](capturas/figura_01_panel_registro_simple.png)
+![Listado simple de películas](capturas/figura_02_listado_simple_peliculas.png)
 
 ### panel después
 
+![Listado personalizado](capturas/figura_03_listado_personalizado.png)
+![Formulario de película](capturas/figura_11_formulario_pelicula_datos.png)
+![Solo lectura y valoración en línea](capturas/figura_12_solo_lectura_y_valoracion_en_linea.png)
+
 ### vista del superusuario
 
+![Panel del superusuario](capturas/figura_04_panel_personalizado.png)
+![Grupo editores](capturas/figura_17_grupo_editores_permisos.png)
+
 ### vista del editor
+
+![Panel del editor](capturas/figura_18_panel_como_editor.png)
+![Formulario del editor sin Delete](capturas/figura_19_formulario_como_editor_sin_delete.png)
+
+### catálogo público y pruebas
+
+![Catálogo](capturas/figura_20_catalogo_publico.jpg)
+![Recomendaciones](capturas/figura_22_recomendaciones.jpg)
+![Pruebas](capturas/figura_23_pruebas_automaticas.png)
