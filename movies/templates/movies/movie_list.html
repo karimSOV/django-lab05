@@ -1,0 +1,125 @@
+{% extends 'movies/base.html' %}
+
+{% block title %}CineLab · Catálogo{% endblock %}
+
+{% block content %}
+  {% if movies %}
+    <!-- Hero (se llena con las mejor valoradas) -->
+    <section class="hero" id="hero" aria-label="Destacadas">
+      <div class="hero-fade"></div>
+      <div class="hero-content">
+        <div class="hero-kicker">Destacada</div>
+        <h1 id="hero-title"></h1>
+        <div class="hero-meta meta" id="hero-meta"></div>
+        <p id="hero-synopsis"></p>
+        <a class="btn btn-primary" id="hero-rec" href="#">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg> Ver recomendaciones
+        </a>
+        <button class="btn btn-soft" id="hero-info" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5" stroke-linecap="round"/></svg> Más info
+        </button>
+      </div>
+      <div class="hero-dots" id="hero-dots"></div>
+    </section>
+
+    <div class="rows" id="filas"></div>
+
+    <!-- Todas las tarjetas se renderizan aquí una vez y JS las reparte en filas -->
+    <div class="pool" id="pool">
+      {% for m in movies %}{% include 'movies/_card.html' %}{% endfor %}
+    </div>
+
+    <script>
+    (function () {
+      const pool = [...document.querySelectorAll('#pool .card')];
+      const rows = document.getElementById('filas');
+      const avg = c => parseFloat(c.dataset.avg) || 0;
+
+      function addRow(title, cards) {
+        if (!cards.length) return;
+        const row = document.createElement('section');
+        row.className = 'row';
+        row.innerHTML = '<h2></h2><button class="row-arrow left" type="button" aria-label="Anterior"></button>' +
+          '<div class="row-track"></div><button class="row-arrow right" type="button" aria-label="Siguiente"></button>';
+        row.querySelector('h2').textContent = title;
+        const track = row.querySelector('.row-track');
+        cards.forEach(c => track.appendChild(c.cloneNode(true)));
+        rows.appendChild(row);
+      }
+
+      const rated = pool.filter(c => avg(c) > 0).sort((a, b) => avg(b) - avg(a));
+      addRow('Mejor valoradas', rated);
+      addRow('Más recientes por año', [...pool].sort((a, b) => b.dataset.year - a.dataset.year));
+
+      const genres = [...new Set(pool.flatMap(c => c.dataset.genres.split('|').filter(Boolean)))].sort();
+      genres.forEach(g => addRow(g, pool.filter(c => c.dataset.genres.split('|').includes(g))));
+      addRow('{% if q %}Resultados para «{{ q|escapejs }}»{% else %}Todo el catálogo{% endif %} · {{ movies|length }} película{{ movies|length|pluralize }}', pool);
+
+      // Slides del hero: hasta 5 mejor valoradas (o las primeras si no hay notas)
+      const hero = document.getElementById('hero');
+      const featured = (rated.length ? rated : pool).slice(0, 5);
+      featured.forEach((c, i) => {
+        const s = document.createElement('div');
+        s.className = 'hero-slide' + (i === 0 ? ' active' : '');
+        Object.assign(s.dataset, c.dataset);
+        s.innerHTML = '<span class="art"><span class="art-title"></span></span>';
+        hero.insertBefore(s, hero.firstChild);
+      });
+      document.getElementById('pool').remove();
+    })();
+    </script>
+  {% else %}
+    <div class="empty page-pad">
+      {% if q %}
+        <h1>Sin resultados para «{{ q }}»</h1>
+        <p>Prueba con otro título, director o género.</p>
+        <a class="btn btn-primary" href="{% url 'movies:movie_list' %}">Ver todo el catálogo</a>
+      {% else %}
+        <h1>No hay películas registradas</h1>
+        <p>Añade películas desde el panel de administración.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const hero = document.getElementById('hero');
+  if (!hero) return;
+  const { data, metaHTML, openModal } = window.CineLab;
+  const slides = [...hero.querySelectorAll('.hero-slide')].reverse();
+  slides.forEach(s => hero.insertBefore(s, hero.querySelector('.hero-fade')));
+  const dots = document.getElementById('hero-dots');
+  let i = 0, timer = null;
+
+  function show(n) {
+    slides.forEach((s, k) => s.classList.toggle('active', k === n));
+    [...dots.children].forEach((d, k) => d.classList.toggle('active', k === n));
+    const m = data(slides[n]);
+    document.getElementById('hero-title').textContent = m.title;
+    document.getElementById('hero-synopsis').textContent = m.synopsis;
+    document.getElementById('hero-meta').innerHTML = metaHTML(m) +
+      (m.genres.length ? '<span>' + m.genres.map(window.CineLab.esc).join(' • ') + '</span>' : '');
+    document.getElementById('hero-rec').href = m.rec;
+    i = n;
+  }
+  function start() {
+    clearInterval(timer);
+    if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      timer = setInterval(() => show((i + 1) % slides.length), 8000);
+  }
+  slides.forEach((s, k) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('aria-label', 'Destacada ' + (k + 1));
+    b.onclick = () => { show(k); start(); };
+    dots.appendChild(b);
+  });
+  if (slides.length < 2) dots.hidden = true;
+  document.getElementById('hero-info').onclick = () => openModal(slides[i]);
+  hero.addEventListener('mouseenter', () => clearInterval(timer));
+  hero.addEventListener('mouseleave', start);
+  show(0); start();
+})();
+</script>
+{% endblock %}

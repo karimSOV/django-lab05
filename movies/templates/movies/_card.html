@@ -1,0 +1,14 @@
+<button type="button" class="card"
+  data-id="{{ m.pk }}"
+  data-title="{{ m.title }}"
+  data-year="{{ m.year }}"
+  data-synopsis="{{ m.synopsis }}"
+  data-director="{{ m.director|default_if_none:'' }}"
+  data-avg="{% if m.average_score %}{{ m.average_score|floatformat:'2u' }}{% endif %}"
+  data-genres="{% for g in m.genres.all %}{{ g.name }}{% if not forloop.last %}|{% endif %}{% endfor %}"
+  data-poster="{% if m.poster %}{{ m.poster.url }}{% endif %}"
+  data-rec="{% url 'movies:recommendations' m.pk %}"
+  aria-label="{{ m.title }} ({{ m.year }})">
+  <span class="art"><span class="art-title"></span></span>
+  {% if m.average_score %}<span class="badge">★ {{ m.average_score|floatformat:1 }}</span>{% endif %}
+</button>

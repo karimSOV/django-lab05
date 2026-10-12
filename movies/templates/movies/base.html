@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Cine Lab{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ====== Tema claro (cambia --accent para otro color) ====== */
+    :root {
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-2: #eef0f6;
+      --text: #1f2330;
+      --muted: #6b7185;
+      --line: #e3e6ef;
+      --accent: #ff4f5a;
+      --accent-soft: #ffe8ea;
+      --good: #15a35a;
+      --star: #f5a524;
+      --radius: 10px;
+      --shadow-sm: 0 2px 8px rgba(31, 35, 48, .08);
+      --shadow-lg: 0 18px 50px rgba(31, 35, 48, .22);
+      --ease: cubic-bezier(.2, .8, .2, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    a { color: inherit; }
+    button { font: inherit; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+    /* ====== Navbar ====== */
+    .nav {
+      position: fixed; inset: 0 0 auto 0; z-index: 50;
+      display: flex; align-items: center; gap: 28px;
+      padding: 16px 4vw; transition: background .3s, box-shadow .3s;
+      background: linear-gradient(to bottom, rgba(255,255,255,.85), rgba(255,255,255,0));
+    }
+    .nav.solid { background: rgba(255,255,255,.96); box-shadow: var(--shadow-sm); backdrop-filter: blur(8px); }
+    .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -.5px; text-decoration: none; color: var(--accent); }
+    .nav-links { display: flex; gap: 20px; font-size: .92rem; }
+    .nav-links a { text-decoration: none; color: var(--muted); font-weight: 500; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .search {
+      margin-left: auto; display: flex; align-items: center; gap: 8px; width: min(340px, 45vw);
+      background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px;
+      color: var(--muted); transition: border-color .2s, box-shadow .2s;
+    }
+    .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .search svg { width: 18px; height: 18px; flex: 0 0 auto; }
+    .search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: .9rem; color: var(--text); width: 100%; min-width: 0; }
+
+    main { padding-bottom: 60px; }
+    .page-pad { padding-top: 80px; }
+
+    /* ====== Arte de póster (imagen o degradado generado) ====== */
+    .art {
+      display: block; position: relative; width: 100%; height: 100%; overflow: hidden;
+      background: linear-gradient(135deg, hsl(var(--h, 220) 85% 78%), hsl(calc(var(--h, 220) + 50) 80% 62%));
+    }
+    .art img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .4s; }
+    .art img.loaded { opacity: 1; }
+    .art .art-title {
+      display: block; position: absolute; left: 12px; right: 12px; bottom: 10px;
+      font-weight: 800; color: #fff; line-height: 1.1; font-size: 1.05rem;
+      text-shadow: 0 2px 10px rgba(0,0,0,.25);
+    }
+    .art.has-img .art-title { display: none; }
+    /* Los pósters son verticales: en zonas anchas se muestran completos, sin recortar */
+    .hero-slide .art img, .modal-hero .art img, .preview .art img { object-fit: contain; }
+    .hero-slide .art img { object-position: 90% 50%; padding: 90px 0 40px; }
+    @media (max-width: 900px) { .hero-slide .art img { display: none; } }
+    .modal-hero .art img { object-position: 92% 50%; padding: 16px 0; }
+    .preview .art img { padding: 8px 0; }
+    .art.loading::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.55) 50%, transparent 80%);
+      background-size: 200% 100%; animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+
+    /* ====== Hero ====== */
+    .hero { position: relative; height: min(78vh, 620px); min-height: 420px; overflow: hidden; }
+    .hero-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
+    .hero-slide.active { opacity: 1; }
+    .hero-slide .art { position: absolute; inset: 0; }
+    .hero-slide .art .art-title { display: none; }
+    .hero-fade {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(246,247,251,.97) 0%, rgba(246,247,251,.85) 35%, rgba(246,247,251,0) 70%),
+        linear-gradient(0deg, var(--bg) 0%, rgba(246,247,251,0) 30%);
+    }
+    .hero-content {
+      position: absolute; left: 4vw; bottom: 22%; max-width: min(560px, 90vw);
+    }
+    .hero-kicker { color: var(--accent); font-weight: 700; font-size: .8rem; letter-spacing: 2px; text-transform: uppercase; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.6rem); margin: 8px 0 12px; line-height: 1.02; letter-spacing: -1.5px; }
+    .hero p { font-size: 1.05rem; line-height: 1.5; color: #3b4152; margin: 0 0 22px; }
+    .hero-meta { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; font-size: .9rem; color: var(--muted); flex-wrap: wrap; }
+    .hero-dots { position: absolute; right: 4vw; bottom: 22%; display: flex; gap: 6px; }
+    .hero-dots button { width: 22px; height: 4px; border: 0; border-radius: 4px; background: rgba(31,35,48,.2); cursor: pointer; padding: 0; transition: background .3s, width .3s; }
+    .hero-dots button.active { background: var(--accent); width: 34px; }
+
+    /* ====== Botones ====== */
+    .btn { display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer; border-radius: 8px; padding: 11px 22px; font-weight: 600; text-decoration: none; transition: transform .15s, background .2s, box-shadow .2s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+    .btn-soft { background: rgba(255,255,255,.9); color: var(--text); box-shadow: var(--shadow-sm); }
+    .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); display: inline-grid; place-items: center; cursor: pointer; color: var(--text); text-decoration: none; transition: border-color .2s, transform .15s; }
+    .icon-btn:hover { border-color: var(--text); transform: scale(1.06); }
+    .icon-btn.play { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .icon-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    svg { width: 16px; height: 16px; }
+
+    /* ====== Filas ====== */
+    .rows { position: relative; z-index: 2; margin-top: -60px; }
+    .page-pad .rows { margin-top: 0; }
+    .row { margin: 0 0 34px; position: relative; }
+    .row h2 { margin: 0 4vw 10px; font-size: 1.2rem; font-weight: 700; }
+    .row-track {
+      display: flex; gap: 10px; overflow-x: auto; scroll-behavior: smooth;
+      padding: 6px 4vw 10px; scroll-snap-type: x mandatory; scroll-padding: 0 4vw;
+      scrollbar-width: none;
+    }
+    .row-track::-webkit-scrollbar { display: none; }
+    .row-arrow {
+      position: absolute; top: 38px; bottom: 10px; width: 4vw; min-width: 36px; border: 0; z-index: 3;
+      background: rgba(246,247,251,.85); color: var(--text); cursor: pointer;
+      opacity: 0; transition: opacity .2s; display: grid; place-items: center;
+    }
+    .row-arrow svg { width: 26px; height: 26px; transition: transform .2s; }
+    .row-arrow:hover svg { transform: scale(1.25); }
+    .row-arrow.left { left: 0; } .row-arrow.right { right: 0; }
+    .row:hover .row-arrow:not([hidden]) { opacity: 1; }
+    .row-arrow:focus-visible { opacity: 1; }
+
+    /* ====== Tarjetas ====== */
+    .card {
+      flex: 0 0 auto; width: clamp(140px, 13vw, 190px); aspect-ratio: 2 / 3;
+      border-radius: var(--radius); overflow: hidden; cursor: pointer; position: relative;
+      scroll-snap-align: start; box-shadow: var(--shadow-sm); border: 0; padding: 0;
+      background: var(--surface-2); transition: transform .25s var(--ease), box-shadow .25s;
+    }
+    .card:hover { box-shadow: 0 6px 18px rgba(31,35,48,.14); }
+    .card .badge { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.92); color: var(--text); font-size: .72rem; font-weight: 700; padding: 3px 7px; border-radius: 5px; }
+
+    /* ====== Preview flotante (el "agrandado" al hover) ====== */
+    .preview {
+      position: fixed; z-index: 60; background: var(--surface); border-radius: 12px;
+      box-shadow: var(--shadow-lg); overflow: hidden; transform-origin: center;
+      opacity: 0; transform: scale(.72); pointer-events: none;
+      transition: transform .28s var(--ease), opacity .2s ease;
+    }
+    .preview.show { opacity: 1; transform: scale(1); pointer-events: auto; }
+    .preview.origin-left { transform-origin: left center; }
+    .preview.origin-right { transform-origin: right center; }
+    .preview .art { aspect-ratio: 16 / 9; height: auto; }
+    .preview-body { padding: 12px 14px 16px; }
+    .preview-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+    .preview-actions .spacer { flex: 1; }
+    .preview h3 { margin: 0 0 6px; font-size: 1rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .8rem; color: var(--muted); }
+    .match { color: var(--good); font-weight: 700; }
+    .pill { border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: .72rem; }
+    .stars { color: var(--star); letter-spacing: 1px; }
+    .genres { margin-top: 8px; font-size: .8rem; color: var(--text); }
+    .genres span + span::before { content: ' • '; color: var(--muted); }
+
+    /* ====== Modal ====== */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 80; background: rgba(31,35,48,.35); backdrop-filter: blur(6px);
+      display: grid; place-items: start center; overflow-y: auto; padding: 5vh 16px;
+      opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      width: min(820px, 100%); background: var(--surface); border-radius: 14px; overflow: hidden;
+      box-shadow: var(--shadow-lg); transform: translateY(24px) scale(.97); transition: transform .3s var(--ease);
+    }
+    .modal-backdrop.open .modal { transform: none; }
+    .modal-hero { position: relative; aspect-ratio: 16 / 8; }
+    .modal-hero .art .art-title, .preview .art .art-title { display: none; }
+    .modal-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, var(--surface) 0%, rgba(255,255,255,0) 55%); pointer-events: none; }
+    .modal-hero .modal-actions { position: absolute; left: 28px; bottom: 20px; z-index: 2; display: flex; gap: 10px; }
+    .modal-close { position: absolute; top: 14px; right: 14px; z-index: 3; }
+    .modal-body { padding: 8px 28px 28px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .modal-body h2 { margin: 0 0 8px; font-size: 1.7rem; letter-spacing: -.5px; }
+    .modal-body p { line-height: 1.6; color: #3b4152; }
+    .modal-side { font-size: .88rem; color: var(--muted); line-height: 1.7; }
+    .modal-side b { color: var(--text); font-weight: 600; }
+
+    /* ====== Otros ====== */
+    .section-title { margin: 0 4vw 18px; font-size: 1.6rem; letter-spacing: -.5px; }
+    .empty { margin: 120px 4vw; padding: 32px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow-sm); }
+    .back { display: inline-flex; margin: 0 4vw 18px; text-decoration: none; color: var(--muted); font-weight: 500; }
+    .back:hover { color: var(--text); }
+    .pool { display: none; }
+
+    @media (max-width: 700px) {
+      .nav-links { display: none; }
+      .hero-content { bottom: 14%; }
+      .hero-dots { display: none; }
+      .modal-body { grid-template-columns: 1fr; padding: 4px 18px 22px; }
+      .modal-hero .modal-actions { left: 18px; }
+      .row-arrow { display: none; }
+      .card { width: 42vw; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav class="nav" id="nav">
+    <a class="logo" href="{% url 'movies:movie_list' %}">CineLab</a>
+    <div class="nav-links">
+      <a href="{% url 'movies:movie_list' %}" {% if request.resolver_match.url_name == 'movie_list' %}class="active"{% endif %}>Inicio</a>
+    </div>
+    <form class="search" action="{% url 'movies:movie_list' %}" method="get" role="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" name="q" value="{{ q|default:'' }}" placeholder="Buscar por título, director o género" aria-label="Buscar películas">
+    </form>
+  </nav>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Preview flotante que aparece al hacer hover sobre una tarjeta -->
+  <div class="preview" id="preview" aria-hidden="true"></div>
+
+  <!-- Modal "Más info" -->
+  <div class="modal-backdrop" id="modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-hero">
+        <div class="art" id="modal-art"><span class="art-title"></span></div>
+        <button class="icon-btn modal-close" id="modal-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <div class="modal-actions">
+          <a class="btn btn-primary" id="modal-rec" href="#">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg> Ver recomendaciones
+          </a>
+          <button class="icon-btn js-mylist" aria-label="Agregar a mi lista" data-for="">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="meta" id="modal-meta"></div>
+          <h2 id="modal-title"></h2>
+          <p id="modal-synopsis"></p>
+        </div>
+        <div class="modal-side" id="modal-side"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    const ICON = {
+      play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+      like: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 11v9H4v-9h3zm0 0l4-8a2 2 0 012 2v4h5a2 2 0 012 2.3l-1.2 7A2 2 0 0116.8 20H7"/></svg>',
+      down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+      left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+      right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>'
+    };
+
+    /* ---------- Utilidades ---------- */
+    function hueOf(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+    function data(el) {
+      const d = el.dataset;
+      return {
+        id: d.id, title: d.title, year: d.year, synopsis: d.synopsis, director: d.director,
+        avg: d.avg ? parseFloat(d.avg.replace(',', '.')) : null, count: d.count,
+        genres: d.genres ? d.genres.split('|').filter(Boolean) : [], poster: d.poster, rec: d.rec
+      };
+    }
+    function stars(avg) { if (!avg) return ''; const n = Math.round(avg / 2); return '★'.repeat(n) + '☆'.repeat(5 - n); }
+    function metaHTML(m) {
+      let h = '';
+      if (m.avg) h += '<span class="match">' + m.avg.toFixed(1).replace('.', ',') + ' / 10</span>';
+      h += '<span>' + esc(m.year) + '</span>';
+      if (m.avg) h += '<span class="stars" title="' + m.avg.toFixed(2) + ' / 10">' + stars(m.avg) + '</span>';
+      else h += '<span class="pill">Sin valoraciones</span>';
+      return h;
+    }
+    // Pinta un contenedor .art con la imagen o con un degradado generado a partir del título
+    function paintArt(art, m) {
+      art.style.setProperty('--h', hueOf(m.title || ''));
+      art.classList.remove('has-img', 'loading');
+      const old = art.querySelector('img'); if (old) old.remove();
+      const t = art.querySelector('.art-title'); if (t) t.textContent = m.title;
+      if (m.poster) {
+        art.classList.add('has-img', 'loading');
+        const img = new Image(); img.alt = m.title; img.loading = 'lazy';
+        img.onload = () => { img.classList.add('loaded'); art.classList.remove('loading'); };
+        img.onerror = () => { img.remove(); art.classList.remove('has-img', 'loading'); };
+        img.src = m.poster; art.prepend(img);
+      }
+    }
+    window.CineLab = { paintArt, data, metaHTML, esc, ICON };
+
+    /* ---------- Mi lista (solo en este navegador) ---------- */
+    let myList = [];
+    try { myList = JSON.parse(localStorage.getItem('cinelab-mylist') || '[]'); } catch (e) {}
+    function inList(id) { return myList.includes(id); }
+    function toggleList(id) {
+      myList = inList(id) ? myList.filter(x => x !== id) : myList.concat(id);
+      try { localStorage.setItem('cinelab-mylist', JSON.stringify(myList)); } catch (e) {}
+      syncListButtons();
+    }
+    function syncListButtons() {
+      document.querySelectorAll('.js-mylist').forEach(b => {
+        const on = inList(b.dataset.for);
+        b.classList.toggle('on', on);
+        b.innerHTML = on ? ICON.check : ICON.plus;
+        b.setAttribute('aria-label', on ? 'Quitar de mi lista' : 'Agregar a mi lista');
+      });
+    }
+
+    /* ---------- Navbar ---------- */
+    const nav = document.getElementById('nav');
+    const onScroll = () => nav.classList.toggle('solid', window.scrollY > 30);
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    /* ---------- Tarjetas y slides: pintar arte ---------- */
+    document.querySelectorAll('.card[data-title], .hero-slide[data-title]').forEach(el => {
+      const art = el.querySelector('.art');
+      if (art) paintArt(art, data(el));
+    });
+
+    /* ---------- Filas: flechas ---------- */
+    document.querySelectorAll('.row').forEach(row => {
+      const track = row.querySelector('.row-track');
+      const l = row.querySelector('.row-arrow.left'), r = row.querySelector('.row-arrow.right');
+      if (!track || !l || !r) return;
+      l.innerHTML = ICON.left; r.innerHTML = ICON.right;
+      const update = () => {
+        l.hidden = track.scrollLeft <= 4;
+        r.hidden = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      };
+      l.addEventListener('click', () => track.scrollBy({ left: -track.clientWidth * .85 }));
+      r.addEventListener('click', () => track.scrollBy({ left: track.clientWidth * .85 }));
+      track.addEventListener('scroll', () => { update(); hidePreview(true); }, { passive: true });
+      window.addEventListener('resize', update); update();
+    });
+
+    /* ---------- Preview al hover ---------- */
+    const preview = document.getElementById('preview');
+    let hoverTimer = null, leaveTimer = null, current = null;
+
+    function showPreview(card) {
+      const m = data(card);
+      const rect = card.getBoundingClientRect();
+      const w = Math.min(rect.width * 1.5, window.innerWidth - 16);
+      let left = rect.left + rect.width / 2 - w / 2;
+      preview.className = 'preview';
+      if (left < 8) { left = Math.max(8, rect.left); preview.classList.add('origin-left'); }
+      else if (left + w > window.innerWidth - 8) { left = Math.min(window.innerWidth - 8 - w, rect.right - w); preview.classList.add('origin-right'); }
+      const top = Math.max(70, rect.top - rect.height * .25);
+
+      preview.innerHTML =
+        '<div class="art"><span class="art-title"></span></div>' +
+        '<div class="preview-body">' +
+          '<div class="preview-actions">' +
+            '<a class="icon-btn play" href="' + esc(m.rec) + '" aria-label="Ver recomendaciones">' + ICON.play + '</a>' +
+            '<button class="icon-btn js-mylist" data-for="' + esc(m.id) + '"></button>' +
+            '<button class="icon-btn js-like" aria-label="Me gusta">' + ICON.like + '</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="icon-btn js-more" aria-label="Más información">' + ICON.down + '</button>' +
+          '</div>' +
+          '<h3>' + esc(m.title) + '</h3>' +
+          '<div class="meta">' + metaHTML(m) + '</div>' +
+          '<div class="genres">' + m.genres.map(g => '<span>' + esc(g) + '</span>').join('') + '</div>' +
+        '</div>';
+      paintArt(preview.querySelector('.art'), m);
+      syncListButtons();
+      preview.style.width = w + 'px';
+      preview.style.left = left + 'px';
+      preview.style.top = top + 'px';
+      preview.setAttribute('aria-hidden', 'false');
+      current = card;
+
+      preview.querySelector('.js-mylist').onclick = e => { e.stopPropagation(); toggleList(m.id); };
+      preview.querySelector('.js-like').onclick = e => { e.currentTarget.classList.toggle('on'); };
+      preview.querySelector('.js-more').onclick = () => { hidePreview(true); openModal(card); };
+      preview.querySelector('.art').onclick = () => { hidePreview(true); openModal(card); };
+
+      // Si se sale por abajo, lo subimos
+      requestAnimationFrame(() => {
+        const ph = preview.offsetHeight;
+        if (top + ph > window.innerHeight - 8) preview.style.top = Math.max(70, window.innerHeight - ph - 8) + 'px';
+        preview.classList.add('show');
+      });
+    }
+    function hidePreview(now) {
+      clearTimeout(hoverTimer); clearTimeout(leaveTimer);
+      const go = () => { preview.classList.remove('show'); preview.setAttribute('aria-hidden', 'true'); current = null; };
+      if (now) go(); else leaveTimer = setTimeout(go, 120);
+    }
+
+    if (canHover) {
+      document.addEventListener('mouseover', e => {
+        const card = e.target.closest('.row-track .card');
+        if (!card) return;
+        clearTimeout(leaveTimer);
+        if (current === card) return;
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => showPreview(card), reduce ? 0 : 350);
+      });
+      document.addEventListener('mouseout', e => {
+        const card = e.target.closest('.row-track .card');
+        if (card && !card.contains(e.relatedTarget) && !preview.contains(e.relatedTarget)) {
+          clearTimeout(hoverTimer); if (current) hidePreview();
+        }
+      });
+      preview.addEventListener('mouseenter', () => clearTimeout(leaveTimer));
+      preview.addEventListener('mouseleave', () => hidePreview());
+      window.addEventListener('scroll', () => hidePreview(true), { passive: true });
+    }
+
+    /* ---------- Modal ---------- */
+    const modal = document.getElementById('modal');
+    let lastFocus = null;
+    function openModal(card) {
+      const m = data(card);
+      lastFocus = document.activeElement;
+      paintArt(document.getElementById('modal-art'), m);
+      document.getElementById('modal-title').textContent = m.title;
+      document.getElementById('modal-synopsis').textContent = m.synopsis;
+      document.getElementById('modal-meta').innerHTML = metaHTML(m);
+      document.getElementById('modal-rec').href = m.rec;
+      modal.querySelector('.js-mylist').dataset.for = m.id;
+      document.getElementById('modal-side').innerHTML =
+        '<div><b>Director:</b> ' + esc(m.director || 'Sin director') + '</div>' +
+        '<div><b>Géneros:</b> ' + (m.genres.length ? m.genres.map(esc).join(', ') : 'Sin géneros') + '</div>' +
+        '<div><b>Promedio:</b> ' + (m.avg ? m.avg.toFixed(2) + ' / 10' : 'Sin valoraciones') + '</div>';
+      syncListButtons();
+      modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('modal-close').focus();
+    }
+    function closeModal() {
+      modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      if (lastFocus) lastFocus.focus();
+    }
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    modal.querySelector('.js-mylist').addEventListener('click', e => toggleList(e.currentTarget.dataset.for));
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { if (modal.classList.contains('open')) closeModal(); else hidePreview(true); }
+    });
+    // Clic / Enter en una tarjeta abre el modal (en móvil es el tap)
+    document.addEventListener('click', e => {
+      const card = e.target.closest('.card');
+      if (card) { hidePreview(true); openModal(card); }
+    });
+    window.CineLab.openModal = openModal;
+    window.CineLab.toggleList = toggleList;
+    window.CineLab.syncListButtons = syncListButtons;
+    syncListButtons();
+  })();
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
