@@ -64,7 +64,7 @@ Abre `http://127.0.0.1:8000/admin/` para el panel. Detén el servidor con
 `Ctrl+C` antes de iniciar otro en el mismo puerto. La raíz `/` redirige al
 catálogo público en `/movies/`.
 
-No hay fixtures, seeds ni carga automática del catálogo. Añade géneros,
+No hay fixtures ni seeds que carguen el catálogo. Añade géneros,
 personas, películas y valoraciones manualmente desde el administrador. El
 formulario de película incluye una fila adicional de valoración y campos de
 auditoría de solo lectura. Los puntajes admitidos son enteros del 1 al 10.
@@ -93,9 +93,9 @@ de forma oculta y pasarla igualmente mediante el argumento requerido:
 ```powershell
 $editorUsername = Read-Host "Usuario del editor"
 $editorPassword = Read-Host "Clave del editor" -AsSecureString
-$editorCredential = [System.Management.Automation.PSCredential]::new($editorUsername, $editorPassword)
-.\venv\Scripts\python.exe manage.py setup_editors --username $editorUsername --password ($editorCredential.GetNetworkCredential().Password)
-Remove-Variable -Name editorPassword, editorCredential
+$editorPlain = [System.Net.NetworkCredential]::new("", $editorPassword).Password
+.\venv\Scripts\python.exe manage.py setup_editors --username $editorUsername --password $editorPlain
+Remove-Variable -Name editorPassword, editorPlain
 ```
 
 Aunque la entrada sea oculta, el argumento de contraseña podría ser visible
