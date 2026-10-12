@@ -224,4 +224,4 @@ Las imágenes están en la carpeta `capturas/`.
 
 ![Catálogo](capturas/figura_20_catalogo_publico.jpg)
 ![Recomendaciones](capturas/figura_22_recomendaciones.jpg)
-![Pruebas](capturas/figura_23_pruebas_automaticas.png)
+![Pruebas](capturas/figura_23_pruebas.png)
