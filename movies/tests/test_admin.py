@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from movies.models import Genre, Movie, Rating
+from movies.models import Genre, Movie, Person, Rating
 
 
 class EditorAdminTests(TestCase):
@@ -159,3 +159,19 @@ class EditorAdminTests(TestCase):
         admin_form = response.context["adminform"]
         self.assertIn("created_at", admin_form.readonly_fields)
         self.assertNotIn("created_at", admin_form.form.fields)
+
+    def test_movie_search_matches_title_and_director_name(self):
+        director = Person.objects.create(name="Jane Director")
+        directed = Movie.objects.create(
+            title="Another Film", year=2023, director=director
+        )
+        directed.genres.add(self.genre)
+        url = reverse("admin:movies_movie_changelist")
+        by_director = self.client.get(url, {"q": "jane"})
+        self.assertEqual(
+            list(by_director.context["cl"].result_list), [directed]
+        )
+        by_title = self.client.get(url, {"q": "editor"})
+        self.assertEqual(
+            list(by_title.context["cl"].result_list), [self.movie]
+        )

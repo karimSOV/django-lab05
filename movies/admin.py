@@ -13,7 +13,7 @@ class RatingInline(admin.TabularInline):
 class MovieAdmin(admin.ModelAdmin):
     list_display = ["title", "year", "director", "display_genres"]
     list_filter = ["genres", "year"]
-    search_fields = ["title"]
+    search_fields = ["title", "director__name"]
     filter_horizontal = ["genres"]
     list_select_related = ["director"]
     inlines = [RatingInline]

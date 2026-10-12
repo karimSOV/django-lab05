@@ -168,7 +168,7 @@ Configura `SECRET_KEY` en la sesión y ejecuta:
 .\venv\Scripts\python.exe manage.py test movies.tests --verbosity 2
 ```
 
-Los 32 tests usan `django.test` y una base temporal en memoria, que Django
+Los 33 tests usan `django.test` y una base temporal en memoria, que Django
 destruye al finalizar. Los tests generan sus propios datos y llaman a
 `setup_editors` solo en esa base temporal; no modifican `db.sqlite3`.
 
